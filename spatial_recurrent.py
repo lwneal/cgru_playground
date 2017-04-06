@@ -10,13 +10,10 @@ from keras import backend as K
 import imutil
 from cgru import SpatialCGRU, transpose, reverse
 
-print("Setting arrays to pretty-print")
-np.set_printoptions(formatter={'float_kind':lambda x: "% .1f" % x})
 
-# Output RGB
-CHANNELS = 3
+# Output is RGB
 IMG_CHANNELS = 3
-BATCH_SIZE = 16
+
 
 def main(**params):
     model = build_model(**params)
@@ -24,11 +21,12 @@ def main(**params):
 
 
 def build_model(width, **params):
+    batch_size = params['batch_size']
     CRN_INPUT_SIZE = 8
     CRN_OUTPUT_SIZE = 64
 
     # NOTE: All inputs are square
-    img = layers.Input(batch_shape=(BATCH_SIZE, width, width, IMG_CHANNELS))
+    img = layers.Input(batch_shape=(batch_size, width, width, IMG_CHANNELS))
 
     # Apply the convolutional layers of VGG16
     from keras.applications.vgg16 import VGG16
@@ -72,6 +70,7 @@ def build_model(width, **params):
 
 
 def train(model, model_filename, **params):
+    batch_size = params['batch_size']
     X, Y = example(**params)
     print("Input X:")
     imutil.show(X)
@@ -84,7 +83,7 @@ def train(model, model_filename, **params):
 
     while True:
         # Data for demo prediction
-        examples = [example(**params) for _ in range(BATCH_SIZE)]
+        examples = [example(**params) for _ in range(batch_size)]
         batch_X, batch_Y = map(np.array, zip(*examples))
 
         # Predict
@@ -101,7 +100,7 @@ def train(model, model_filename, **params):
         print("Training...")
         # Train for a while
         for i in range(32):
-            examples = [example(**params) for _ in range(BATCH_SIZE)]
+            examples = [example(**params) for _ in range(batch_size)]
             batch_X, batch_Y = map(np.array, zip(*examples))
             h = model.train_on_batch(np.array(batch_X), np.array(batch_Y))
 
