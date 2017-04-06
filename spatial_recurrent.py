@@ -88,10 +88,10 @@ def train(model, model_filename, batches_per_epoch, **params):
         preds = model.predict(batch_X)[-1]
         X = batch_X[-1]
         Y = batch_Y[-1]
-        print("Input:")
-        imutil.show(X)
-        print("Ground Truth:")
-        imutil.show(map_to_img(Y, **params))
+        #print("Input:")
+        #imutil.show(X)
+        #print("Ground Truth:")
+        #imutil.show(map_to_img(Y, **params))
         print("Network Output:")
         imutil.show(X + map_to_img(preds, **params))
 
@@ -118,51 +118,57 @@ def example(**params):
     dx, dy = rand(), rand()
     pixels[dy-16:dy+16, dx-16:dx+16] = dog
 
+    target = np.zeros((width, width, IMG_CHANNELS))
+
     # Easy Target: A single layer CGRU gets this right away
     # Light up the row and column centered on the cat
-    #target = crosshair(cx/SCALE, cy/SCALE, color=0)
+    #target += crosshair(cx, cy, color=0, **params)
 
     # Easy Target:
     # Light up a cone to the right of the cat
-    #target = right_cone(cx, cy)
+    #target += right_cone(cx, cy)
 
     # Medium Target: Light up for all pixels that are ABOVE the cat AND RIGHT OF the dog
     # Takes a little more training but one layer figures this out
-    #target = up_cone(cx, cy) + right_cone(dx, dy)
-    #target = (target > 1).astype(np.float)
+    #target += up_cone(cx, cy) + right_cone(dx, dy)
+    #target += (target > 1).astype(np.float)
 
     # Medium Target: Light up a fixed-radius circle around the cat
     # The only hard part here is learning to ignore the dog
-    #target = circle(cx/SCALE, cy/SCALE, 4)
+    #target += circle(cx, cy, 4)
 
     # Hard Target: Line from cat to dog
     # This can't be done at distance without two layers
-    target = line(dx, dy, cx, cy, **params)
+    #target += line(dx, dy, cx, cy, color=1, **params)
 
     # Hard Target: Light up the midway point between the cat and the dog
-    #target = circle((dx+cx)/2/SCALE, (dy+cy)/2/SCALE, 1, color=1)
+    #target = circle((dx+cx)/2, (dy+cy)/2, 1, color=1)
 
     # Hard Target: Light up a circle around the cat BUT
     # with radius equal to the distance to the dog
     #rad = math.sqrt((dx-cx)**2 + (dy-cy)**2)
-    #target += circle(cx/SCALE, cy/SCALE, rad/SCALE, color=0)
-    #target += circle(dx/SCALE, dy/SCALE, rad/SCALE, color=2)
+    #target += circle(cx, cy, rad, color=0)
+    #target += circle(dx, dy, rad, color=2)
 
     # For fun, ALSO draw a blue circle around the cat
-    #target += circle(cx/SCALE, cy/SCALE, 4, color=2)
-    #target = np.clip(target, 0, 1)
+    for r in range(30, 34):
+        target += circle(cx, cy, r, color=2, **params)
+
+    target = smooth_gradient(target, **params)
+    return pixels, target
+
+
+def smooth_gradient(target, smoothing_epsilon=.05, max_filter_size=4, **params):
+    # Blur to reward approximate correct answers
+    if max_filter_size > 1:
+        from scipy.ndimage.filters import maximum_filter
+        for c in range(IMG_CHANNELS):
+            target[:,:,c] = maximum_filter(target[:,:,c], size=max_filter_size)
 
     # Add a little epsilon to stave off dead gradient
-    target += .05
+    target += smoothing_epsilon
+    return np.clip(target, 0, 1)
 
-    # Gaussian blur to smooth the gradient
-    from scipy.ndimage.filters import gaussian_filter
-    target = gaussian_filter(target, sigma=1.0)
-
-    target *= 10
-    target = np.clip(target, 0, 1)
-
-    return pixels, target
 
 
 def up_cone(x, y, width, color=0, **params):
@@ -187,7 +193,7 @@ def right_cone(x, y, width, color=0, **params):
     return Y
 
 
-def crosshair(x, y, color=0):
+def crosshair(x, y, width, color=0, **params):
     height = width
     Y = np.zeros((height, width, IMG_CHANNELS))
     Y[y,:, color] = 1.0
@@ -195,8 +201,7 @@ def crosshair(x, y, color=0):
     return Y
 
 
-def circle(x, y, r, color=0):
-    width = IMG_WIDTH / SCALE
+def circle(x, y, r, width, color=0, **params):
     height = width
     Y = np.zeros((height, width, IMG_CHANNELS))
     for t in range(628):
@@ -210,9 +215,10 @@ def circle(x, y, r, color=0):
 def line(x0, y0, x1, y1, color=0, **params):
     width = params['width']
     Y = np.zeros((width, width, IMG_CHANNELS))
-    for t in range(100):
-        yi = y0 + (t / 100.) * (y1 - y0)
-        xi = x0 + (t / 100.) * (x1 - x0)
+    dist_scale = abs(x1-x0) + abs(y1-y0)
+    for t in range(dist_scale):
+        yi = y0 + (t / float(dist_scale)) * (y1 - y0)
+        xi = x0 + (t / float(dist_scale)) * (x1 - x0)
         Y[int(yi), int(xi), color] = 1.0
     return Y
 
