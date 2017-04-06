@@ -10,7 +10,7 @@ Arguments:
 Options:
       --model_filename=<model>          Name of saved .h5 parameter files after each epoch. [default: None]
       --epochs=<epochs>                 Number of epochs to train [default: 2000].
-      --batches_per_epoch=<b>           Number of batches per epoch [default: 1000].
+      --batches_per_epoch=<b>           Number of batches per epoch [default: 32].
       --batch_size=<size>               Batch size for training [default: 16]
       --width=<width>                   Width of generated training bitmaps [default: 224].
       --cgru_size_1=<size>              Number of units in first CGRU layer [default: 128].

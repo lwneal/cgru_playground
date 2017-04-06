@@ -67,7 +67,7 @@ def build_model(width, cgru_size_1, cgru_size_2, **params):
     return moo
 
 
-def train(model, model_filename, **params):
+def train(model, model_filename, batches_per_epoch, **params):
     batch_size = params['batch_size']
     X, Y = example(**params)
     print("Input X:")
@@ -97,7 +97,7 @@ def train(model, model_filename, **params):
 
         print("Training...")
         # Train for a while
-        for i in range(32):
+        for i in range(batches_per_epoch):
             examples = [example(**params) for _ in range(batch_size)]
             batch_X, batch_Y = map(np.array, zip(*examples))
             h = model.train_on_batch(np.array(batch_X), np.array(batch_Y))
