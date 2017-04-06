@@ -20,10 +20,8 @@ def main(**params):
     train(model, **params)
 
 
-def build_model(width, **params):
+def build_model(width, cgru_size_1, cgru_size_2, **params):
     batch_size = params['batch_size']
-    CRN_INPUT_SIZE = 8
-    CRN_OUTPUT_SIZE = 64
 
     # NOTE: All inputs are square
     img = layers.Input(batch_shape=(batch_size, width, width, IMG_CHANNELS))
@@ -38,9 +36,9 @@ def build_model(width, **params):
     x = vgg(img)
 
     # Statefully scan the image in each of four directions
-    x = SpatialCGRU(x, CRN_OUTPUT_SIZE)
-    # Do spatial CGRU layers work kinda like convolutional layers?
-    x = SpatialCGRU(x, CRN_OUTPUT_SIZE)
+    x = SpatialCGRU(x, cgru_size_1)
+    # Stack another one on there
+    x = SpatialCGRU(x, cgru_size_2)
 
     # Upsample and convolve
     x = layers.UpSampling2D((2,2))(x)

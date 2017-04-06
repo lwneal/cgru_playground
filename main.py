@@ -13,6 +13,8 @@ Options:
       --batches_per_epoch=<b>           Number of batches per epoch [default: 1000].
       --batch_size=<size>               Batch size for training [default: 16]
       --width=<width>                   Width of generated training bitmaps [default: 224].
+      --cgru_size_1=<size>              Number of units in first CGRU layer [default: 128].
+      --cgru_size_2=<size>              Number of units in second CGRU layer [default: 256].
       --foobar=<foobar>                 Enable foobar during training [default: False].
 """
 from docopt import docopt
