@@ -15,7 +15,7 @@ Options:
       --width=<width>                   Width of generated training bitmaps [default: 224].
       --cgru_size_1=<size>              Number of units in first CGRU layer [default: 128].
       --cgru_size_2=<size>              Number of units in second CGRU layer [default: 256].
-      --foobar=<foobar>                 Enable foobar during training [default: False].
+      --validate=<validate>             Validate instead of training [default: False].
 """
 from docopt import docopt
 from pprint import pprint

@@ -132,6 +132,8 @@ def get_batch(**params):
 
 def example(**params):
     width = params['width']
+    validate = params['validate']
+
     pixels = np.zeros((width, width, 3))
     rand = lambda: np.random.randint(16, width-16-1)
     cx, cy = rand(), rand()
@@ -143,16 +145,28 @@ def example(**params):
 
     phrase = random.choice([
         'draw a red cross through the cat',
-        'draw a blue circle around the dog',
+        'draw a green cross through the cat',
+        'draw a blue cross through the cat',
+        'draw a red cross through the dog',
+        'draw a green cross through the dog',
+        'draw a blue cross through the dog',
+        'draw a red circle around the cat',
         'draw a green circle around the cat',
+        'draw a blue circle around the cat',
+        'draw a red circle around the dog',
+        'draw a green circle around the dog',
     ])
+    if validate:
+        phrase = random.choice([
+            'draw a blue circle around the dog',
+        ])
 
     # Easy Target: A single layer CGRU gets this right away
     # Light up the row and column centered on the cat
     if 'cross' in phrase:
         x, y = (cx, cy) if 'cat' in phrase else (dx, dy)
         color = 0 if 'red' in phrase else 1 if 'green' in phrase else 2
-        target += crosshair(x, y, color=0, **params)
+        target += crosshair(x, y, color=color, **params)
 
     # Easy Target:
     # Light up a cone to the right of the cat
