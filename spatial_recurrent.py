@@ -147,21 +147,13 @@ def example(**params):
     target = np.zeros((width, width, IMG_CHANNELS))
 
     phrase = random.choice([
-        'draw a red cross through the cat',
-        'draw a green cross through the cat',
-        'draw a blue cross through the cat',
-        'draw a red cross through the dog',
-        'draw a green cross through the dog',
-        'draw a blue cross through the dog',
-        'draw a red circle around the cat',
-        'draw a green circle around the cat',
-        'draw a blue circle around the cat',
-        'draw a red circle around the dog',
-        'draw a green circle around the dog',
+        'draw a {} cross around the {}'.format(random.choice(['red', 'green', 'blue']), random.choice(['dog', 'cat'])),
+        'draw a {} circle around the {}'.format(random.choice(['red', 'green', 'blue']), random.choice(['dog', 'cat'])),
+        'draw a {} line between the cat and dog'.format(random.choice(['red', 'green'])),
     ])
     if validate:
         phrase = random.choice([
-            'draw a blue circle around the dog',
+            'draw a blue line between the cat and dog',
         ])
 
     # Easy Target: A single layer CGRU gets this right away
@@ -185,8 +177,9 @@ def example(**params):
     #target += circle(cx, cy, 4)
 
     # Hard Target: Line from cat to dog
-    # This can't be done at distance without two layers
-    #target += line(dx, dy, cx, cy, color=1, **params)
+    if 'line between' in phrase:
+        color = 0 if 'red' in phrase else 1 if 'green' in phrase else 2
+        target += line(dx, dy, cx, cy, color=color, **params)
 
     # Hard Target: Light up the midway point between the cat and the dog
     #target = circle((dx+cx)/2, (dy+cy)/2, 1, color=1)
@@ -269,7 +262,8 @@ def line(x0, y0, x1, y1, color=0, **params):
     for t in range(dist_scale):
         yi = y0 + (t / float(dist_scale)) * (y1 - y0)
         xi = x0 + (t / float(dist_scale)) * (x1 - x0)
-        Y[int(yi), int(xi), color] = 1.0
+        yi, xi = int(yi), int(xi)
+        Y[yi-3:yi+3, xi-3:xi+3, color] = 1.0
     return Y
 
 
