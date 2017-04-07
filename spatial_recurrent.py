@@ -36,7 +36,7 @@ def build_model(width, cgru_size_1, cgru_size_2, embed_size=256, **params):
     
     language = layers.Embedding(embed_size, words.VOCABULARY_SIZE)(input_words)
     language = layers.GRU(embed_size)(language)
-    language = layers.Dense(embed_size)(language)
+    language_output = layers.Dense(embed_size)(language)
 
     # Apply the convolutional layers of VGG16
     from keras.applications.vgg16 import VGG16
@@ -49,15 +49,20 @@ def build_model(width, cgru_size_1, cgru_size_2, embed_size=256, **params):
 
     # Broadcast language into every convolutional output
     shape = map(int, x.shape)
-    language = layers.RepeatVector(shape[1] * shape[2])(language)
+    language = layers.RepeatVector(shape[1] * shape[2])(language_output)
     language = layers.Reshape((shape[1], shape[2], embed_size))(language)
-
     x = layers.Concatenate()([x, language])
 
     # Statefully scan the image in each of four directions
     x = SpatialCGRU(x, cgru_size_1)
     # Stack another one on there
     x = SpatialCGRU(x, cgru_size_2)
+
+    # Add language output again!
+    shape = map(int, x.shape)
+    language = layers.RepeatVector(shape[1] * shape[2])(language_output)
+    language = layers.Reshape((shape[1], shape[2], embed_size))(language)
+    x = layers.Concatenate()([x, language])
 
     # Upsample and convolve
     x = layers.UpSampling2D((2,2))(x)
@@ -73,6 +78,7 @@ def build_model(width, cgru_size_1, cgru_size_2, embed_size=256, **params):
     x = layers.Conv2D(16, (3,3), activation='relu', padding='same')(x)
     # Upsample and convolve
     x = layers.UpSampling2D((2,2))(x)
+
     # Output an RGB image
     x = layers.Conv2D(8, (3,3), activation='relu', padding='same')(x)
     # Upsample and convolve
@@ -81,7 +87,7 @@ def build_model(width, cgru_size_1, cgru_size_2, embed_size=256, **params):
     x = layers.Conv2D(3, (3,3), activation='sigmoid', padding='same')(x)
 
     moo = models.Model(inputs=[input_img, input_words], outputs=x)
-    moo.compile(optimizer='adam', loss='mse')
+    moo.compile(optimizer='adam', loss='mse', lr=.0001)
     moo.summary()
     return moo
 
@@ -133,15 +139,19 @@ def get_batch(**params):
     return [batch_X_pixels, batch_X_words], batch_Y
 
 
-def example(**params):
+def example(curriculum_level, **params):
     width = params['width']
     validate = params['validate']
 
     pixels = np.zeros((width, width, 3))
     rand = lambda: np.random.randint(16, width-16-1)
+
     cx, cy = rand(), rand()
     pixels[cy-16:cy+16, cx-16:cx+16] = cat
+
     dx, dy = rand(), rand()
+    while cx - 8 < dx < cx + 8 and cy - 8 < dy < cy + 8:
+        dx, dy = rand(), rand()
     pixels[dy-16:dy+16, dx-16:dx+16] = dog
 
     target = np.zeros((width, width, IMG_CHANNELS))
@@ -150,7 +160,9 @@ def example(**params):
         'draw a {} cross around the {}'.format(random.choice(['red', 'green', 'blue']), random.choice(['dog', 'cat'])),
         'draw a {} circle around the {}'.format(random.choice(['red', 'green', 'blue']), random.choice(['dog', 'cat'])),
         'draw a {} line between the cat and dog'.format(random.choice(['red', 'green'])),
-    ])
+        'draw a {} circle between the cat and dog'.format(random.choice(['red', 'green', 'blue'])),
+        'draw a {} cone {} the {}'.format(random.choice(['red', 'green', 'blue']), random.choice(['above', 'below', 'left of', 'right of']), random.choice(['dog', 'cat'])),
+    ][:curriculum_level])
     if validate:
         phrase = random.choice([
             'draw a blue line between the cat and dog',
@@ -163,37 +175,25 @@ def example(**params):
         color = 0 if 'red' in phrase else 1 if 'green' in phrase else 2
         target += crosshair(x, y, color=color, **params)
 
-    # Easy Target:
-    # Light up a cone to the right of the cat
-    #target += right_cone(cx, cy)
-
-    # Medium Target: Light up for all pixels that are ABOVE the cat AND RIGHT OF the dog
-    # Takes a little more training but one layer figures this out
-    #target += up_cone(cx, cy) + right_cone(dx, dy)
-    #target += (target > 1).astype(np.float)
-
-    # Medium Target: Light up a fixed-radius circle around the cat
-    # The only hard part here is learning to ignore the dog
-    #target += circle(cx, cy, 4)
-
     # Hard Target: Line from cat to dog
     if 'line between' in phrase:
         color = 0 if 'red' in phrase else 1 if 'green' in phrase else 2
         target += line(dx, dy, cx, cy, color=color, **params)
 
     # Hard Target: Light up the midway point between the cat and the dog
-    #target = circle((dx+cx)/2, (dy+cy)/2, 1, color=1)
+    if 'circle between' in phrase:
+        color = 0 if 'red' in phrase else 1 if 'green' in phrase else 2
+        target = circle((dx+cx)/2, (dy+cy)/2, rmin=1, rmax=16, color=color, **params)
 
-    # Hard Target: Light up a circle around the cat BUT
-    # with radius equal to the distance to the dog
-    #rad = math.sqrt((dx-cx)**2 + (dy-cy)**2)
-    #target += circle(cx, cy, rad, color=0)
-    #target += circle(dx, dy, rad, color=2)
-
-    if 'circle' in phrase:
+    if 'circle around' in phrase:
         x, y = (cx, cy) if 'cat' in phrase else (dx, dy)
         color = 0 if 'red' in phrase else 1 if 'green' in phrase else 2
         target += circle(x, y, rmin=24, rmax=32, color=color, **params)
+
+    if 'cone above' in phrase:
+        x, y = (cx, cy) if 'cat' in phrase else (dx, dy)
+        color = 0 if 'red' in phrase else 1 if 'green' in phrase else 2
+        target = up_cone(x, y, color, **params)
 
     target = smooth_gradient(target, **params)
     return pixels, words.indices(phrase), target
@@ -212,23 +212,45 @@ def smooth_gradient(target, smoothing_epsilon=.05, max_filter_size=1, **params):
 
 
 
-def up_cone(x, y, width, color=0, **params):
+def up_cone(x, y, color=0, **params):
+    width = params['width']
     Y = np.zeros((width, width, IMG_CHANNELS))
-    pos_y, pos_x = int(y * scale), int(x * scale)
-    for i in range(pos_y, -1, -1):
-        left = pos_x - (pos_y - i)
-        right = pos_x + (pos_y - i) + 1
+    for i in range(y, -1, -1):
+        left = x - (y - i)
+        right = x + (y - i) + 1
         left = max(0, left)
         Y[i, left:right, color] = 1.0
     return Y
     
 
-def right_cone(x, y, width, color=0, **params):
+def right_cone(x, y, color=0, **params):
+    width = params['width']
     Y = np.zeros((width, width, IMG_CHANNELS))
-    pos_y, pos_x = int(y * scale), int(x * scale)
-    for i in range(pos_x, width):
-        bot = pos_y - (i - pos_x)
-        top = pos_y + (i - pos_x) + 1
+    for i in range(x, width):
+        bot = y - (i - x)
+        top = y + (i - x) + 1
+        bot = max(0, bot)
+        Y[bot:top, i, color] = 1.0
+    return Y
+
+
+def down_cone(x, y, color=0, **params):
+    width = params['width']
+    Y = np.zeros((width, width, IMG_CHANNELS))
+    for i in range(y, width):
+        left = x - (y - i)
+        right = x + (y - i) + 1
+        left = max(0, left)
+        Y[i, left:right, color] = 1.0
+    return Y
+    
+
+def left_cone(x, y, color=0, **params):
+    width = params['width']
+    Y = np.zeros((width, width, IMG_CHANNELS))
+    for i in range(x, width, -1):
+        bot = y - (x - i)
+        top = y + (x - i) + 1
         bot = max(0, bot)
         Y[bot:top, i, color] = 1.0
     return Y

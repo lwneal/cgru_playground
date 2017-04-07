@@ -16,6 +16,7 @@ Options:
       --cgru_size_1=<size>              Number of units in first CGRU layer [default: 128].
       --cgru_size_2=<size>              Number of units in second CGRU layer [default: 256].
       --validate=<validate>             Validate instead of training [default: False].
+      --curriculum_level=<level>        From 1 to 10, curriculum learning level [default: 10]
 """
 from docopt import docopt
 from pprint import pprint
