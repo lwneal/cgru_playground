@@ -88,12 +88,15 @@ def build_model(width, cgru_size_1, cgru_size_2, embed_size=256, **params):
 
 def train(model, model_filename, batches_per_epoch, **params):
     batch_size = params['batch_size']
+    validate = params['validate']
 
     if model_filename and os.path.exists(model_filename):
         model.load_weights(model_filename)
 
     while True:
         demo(model, **params)
+        if validate:
+            continue
         for i in range(batches_per_epoch):
             batch_X, batch_Y = get_batch(**params)
             model.train_on_batch(batch_X, batch_Y)
