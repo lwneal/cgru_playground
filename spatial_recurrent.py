@@ -100,9 +100,13 @@ def train(model, model_filename, batches_per_epoch, **params):
         model.load_weights(model_filename)
 
     while True:
-        demo(model, **params)
         if validate:
+            print("Input a command for the network:")
+            user_input = raw_input()
+            demo(model, user_input, **params)
             continue
+        else:
+            demo(model, **params)
         for i in range(batches_per_epoch):
             batch_X, batch_Y = get_batch(**params)
             model.train_on_batch(batch_X, batch_Y)
@@ -110,10 +114,12 @@ def train(model, model_filename, batches_per_epoch, **params):
             model.save_weights(model_filename)
 
 
-def demo(model, **params):
+def demo(model, user_input=None, **params):
     batch_size = params['batch_size']
     # Data for demo prediction
     X, Y = get_batch(**params)
+    if user_input:
+        X[1][0] = words.indices(user_input)
     preds = model.predict(X)
     print("Target (left) vs. Network Output (right):")
     input_pixels, input_words = X[0][0], X[1][0]
@@ -195,6 +201,21 @@ def example(curriculum_level, **params):
         color = 0 if 'red' in phrase else 1 if 'green' in phrase else 2
         target = up_cone(x, y, color, **params)
 
+    if 'cone left' in phrase:
+        x, y = (cx, cy) if 'cat' in phrase else (dx, dy)
+        color = 0 if 'red' in phrase else 1 if 'green' in phrase else 2
+        target = left_cone(x, y, color, **params)
+
+    if 'cone right' in phrase:
+        x, y = (cx, cy) if 'cat' in phrase else (dx, dy)
+        color = 0 if 'red' in phrase else 1 if 'green' in phrase else 2
+        target = right_cone(x, y, color, **params)
+
+    if 'cone below' in phrase:
+        x, y = (cx, cy) if 'cat' in phrase else (dx, dy)
+        color = 0 if 'red' in phrase else 1 if 'green' in phrase else 2
+        target = down_cone(x, y, color, **params)
+
     target = smooth_gradient(target, **params)
     return pixels, words.indices(phrase), target
 
@@ -248,7 +269,7 @@ def down_cone(x, y, color=0, **params):
 def left_cone(x, y, color=0, **params):
     width = params['width']
     Y = np.zeros((width, width, IMG_CHANNELS))
-    for i in range(x, width, -1):
+    for i in range(0, x):
         bot = y - (x - i)
         top = y + (x - i) + 1
         bot = max(0, bot)
