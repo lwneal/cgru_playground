@@ -2,10 +2,7 @@
 This script parses arguments into a dict **params, and calls module_name.main(**params)
 
 Usage:
-        main.py <module_name> [options]
-
-Arguments:
-        module_name: Name of the Python module to run
+        main.py [options]
 
 Options:
       --model_filename=<model>          Name of saved .h5 parameter files after each epoch. [default: None]
@@ -48,5 +45,5 @@ def argval(val):
 
 if __name__ == '__main__':
     params = get_params()
-    module = __import__(params['module_name'].rstrip('.py'))
-    module.main(**params)
+    import spatial_recurrent
+    spatial_recurrent.main(**params)
