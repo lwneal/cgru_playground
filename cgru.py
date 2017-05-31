@@ -9,11 +9,18 @@ from keras.utils import conv_utils
 from keras import activations
 from keras.engine.topology import InputSpec
 
-transpose = layers.Lambda(lambda x: tf.transpose(x, [0, 2, 1, 3]))
-reverse = layers.Lambda(lambda x: tf.reverse(x, [1]))
 
 def SpatialCGRU(x, output_size, tie_weights=False, **kwargs):
-    # Statefully scan the image in each of four directions
+    """
+    This helper layer combines four Convolutional Spatial Recurrent layers,
+    one in each direction to learn global context at each point in an image.
+    """
+
+    # Transpose or reverse the columns for left-to-right, bottom-to-top, etc
+    transpose = layers.Lambda(lambda x: tf.transpose(x, [0, 2, 1, 3]))
+    reverse = layers.Lambda(lambda x: tf.reverse(x, [1]))
+
+    # In problems with rotational symmetry, directional weights can be tied
     if tie_weights:
         cgru = CGRU(output_size)
         down_rnn = cgru(x)
@@ -26,14 +33,16 @@ def SpatialCGRU(x, output_size, tie_weights=False, **kwargs):
         left_rnn = transpose(CGRU(output_size/4)(transpose(x)))
         right_rnn = transpose(reverse(CGRU(output_size/4)(reverse(transpose(x)))))
 
-    # At each location, combine the four outputs
+    # Combine spatial context with the input at each position
     concat_out = layers.Concatenate()([x, down_rnn, up_rnn, left_rnn, right_rnn])
     output_mask = layers.Conv2D(output_size, (1,1))(concat_out)
     return output_mask
 
 
 class CGRU(Recurrent):
-    """ A 1D convolutional tanh/sigmoid GRU with no dropout and no regularization
+    """ 
+    This is the Convolutional Spatial Recurrent layer in the top-to-bottom direction
+    It's implemented as a 1D convolutional GRU with no dropout or regularization
     Convolves forward along the first non-batch axis (ie from top to bottom of an image)
     """
     def __init__(self, units=10, *args, **kwargs):
