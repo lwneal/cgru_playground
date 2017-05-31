@@ -66,30 +66,22 @@ def build_model(width, cgru_size_1, cgru_size_2, embed_size=256, **params):
 
     # Upsample and convolve
     x = layers.UpSampling2D((2,2))(x)
-    # Output an RGB image
     x = layers.Conv2D(64, (3,3), activation='relu', padding='same')(x)
-    # Upsample and convolve
     x = layers.UpSampling2D((2,2))(x)
-    # Output an RGB image
     x = layers.Conv2D(32, (3,3), activation='relu', padding='same')(x)
-    # Upsample and convolve
     x = layers.UpSampling2D((2,2))(x)
-    # Output an RGB image
     x = layers.Conv2D(16, (3,3), activation='relu', padding='same')(x)
-    # Upsample and convolve
+    x = layers.UpSampling2D((2,2))(x)
+    x = layers.Conv2D(8, (3,3), activation='relu', padding='same')(x)
     x = layers.UpSampling2D((2,2))(x)
 
-    # Output an RGB image
-    x = layers.Conv2D(8, (3,3), activation='relu', padding='same')(x)
-    # Upsample and convolve
-    x = layers.UpSampling2D((2,2))(x)
     # Output an RGB image
     x = layers.Conv2D(3, (3,3), activation='sigmoid', padding='same')(x)
 
-    moo = models.Model(inputs=[input_img, input_words], outputs=x)
-    moo.compile(optimizer='adam', loss='mse', lr=.0001)
-    moo.summary()
-    return moo
+    model = models.Model(inputs=[input_img, input_words], outputs=x)
+    model.compile(optimizer='adam', loss='mse', lr=.0001)
+    model.summary()
+    return model
 
 
 def train(model, model_filename, batches_per_epoch, **params):
