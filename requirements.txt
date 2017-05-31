@@ -1,0 +1,6 @@
+docopt
+numpy
+scipy
+Pillow
+keras
+tensorflow-gpu
