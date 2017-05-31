@@ -79,7 +79,7 @@ def build_model(width, cgru_size_1, cgru_size_2, embed_size=256, **params):
     x = layers.Conv2D(3, (3,3), activation='sigmoid', padding='same')(x)
 
     model = models.Model(inputs=[input_img, input_words], outputs=x)
-    model.compile(optimizer='adam', loss='mse', lr=.0001)
+    model.compile(optimizer='adam', loss='binary_crossentropy', lr=.0001)
     model.summary()
     return model
 
@@ -155,11 +155,11 @@ def example(curriculum_level, **params):
     target = np.zeros((width, width, IMG_CHANNELS))
 
     phrase = random.choice([
-        'draw a {} cross around the {}'.format(random.choice(['red', 'green', 'blue']), random.choice(['dog', 'cat'])),
+        'draw a {} cone {} the {}'.format(random.choice(['red', 'green', 'blue']), random.choice(['above', 'below', 'left of', 'right of']), random.choice(['dog', 'cat'])),
         'draw a {} circle around the {}'.format(random.choice(['red', 'green', 'blue']), random.choice(['dog', 'cat'])),
+        'draw a {} cross around the {}'.format(random.choice(['red', 'green', 'blue']), random.choice(['dog', 'cat'])),
         'draw a {} line between the cat and dog'.format(random.choice(['red', 'green'])),
         'draw a {} circle between the cat and dog'.format(random.choice(['red', 'green', 'blue'])),
-        'draw a {} cone {} the {}'.format(random.choice(['red', 'green', 'blue']), random.choice(['above', 'below', 'left of', 'right of']), random.choice(['dog', 'cat'])),
     ][:curriculum_level])
     if validate:
         phrase = random.choice([
@@ -251,9 +251,8 @@ def down_cone(x, y, color=0, **params):
     width = params['width']
     Y = np.zeros((width, width, IMG_CHANNELS))
     for i in range(y, width):
-        left = x - (y - i)
-        right = x + (y - i) + 1
-        left = max(0, left)
+        left = max(0, x - (i - y))
+        right = min(x + (i - y) + 1, width)
         Y[i, left:right, color] = 1.0
     return Y
     

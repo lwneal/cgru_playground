@@ -34,7 +34,7 @@ def SpatialCGRU(x, output_size, tie_weights=False, **kwargs):
         right_rnn = transpose(reverse(CGRU(output_size/4)(reverse(transpose(x)))))
 
     # Combine spatial context with the input at each position
-    concat_out = layers.Concatenate()([x, down_rnn, up_rnn, left_rnn, right_rnn])
+    concat_out = layers.Concatenate()([down_rnn, up_rnn, left_rnn, right_rnn])
     output_mask = layers.Conv2D(output_size, (1,1))(concat_out)
     return output_mask
 
@@ -52,6 +52,7 @@ class CGRU(Recurrent):
 
         # TODO: Handle all the normal RNN parameters
         self.activation = activations.get('tanh')
+        #self.activation = layers.advanced_activations.LeakyReLU()
         self.recurrent_activation = activations.get('hard_sigmoid')
         self.dropout = 0
         self.recurrent_dropout = 0

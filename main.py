@@ -11,7 +11,7 @@ Options:
       --batch_size=<size>               Batch size for training [default: 16]
       --width=<width>                   Width of generated training bitmaps [default: 128].
       --cgru_size_1=<size>              Number of units in first CGRU layer [default: 128].
-      --cgru_size_2=<size>              Number of units in second CGRU layer [default: 256].
+      --cgru_size_2=<size>              Number of units in second CGRU layer [default: 128].
       --validate=<validate>             Validate instead of training [default: False].
       --curriculum_level=<level>        From 1 to 10, curriculum learning level [default: 1]
 """
