@@ -12,18 +12,22 @@ from keras.engine.topology import InputSpec
 transpose = layers.Lambda(lambda x: tf.transpose(x, [0, 2, 1, 3]))
 reverse = layers.Lambda(lambda x: tf.reverse(x, [1]))
 
-def SpatialCGRU(x, output_size, **kwargs):
+def SpatialCGRU(x, output_size, tie_weights=False, **kwargs):
     # Statefully scan the image in each of four directions
-    cgru = CGRU(output_size)
+    if tie_weights:
+        cgru = CGRU(output_size)
+        down_rnn = cgru(x)
+        up_rnn = reverse(cgru(reverse(x)))
+        left_rnn = transpose(cgru(transpose(x)))
+        right_rnn = transpose(reverse(cgru(reverse(transpose(x)))))
+    else:
+        down_rnn = CGRU(output_size/4)(x)
+        up_rnn = reverse(CGRU(output_size/4)(reverse(x)))
+        left_rnn = transpose(CGRU(output_size/4)(transpose(x)))
+        right_rnn = transpose(reverse(CGRU(output_size/4)(reverse(transpose(x)))))
 
-    down_rnn = CGRU(output_size/4)(x)
-    up_rnn = reverse(CGRU(output_size/4)(reverse(x)))
-    left_rnn = transpose(CGRU(output_size/4)(transpose(x)))
-    right_rnn = transpose(reverse(CGRU(output_size/4)(reverse(transpose(x)))))
-
+    # At each location, combine the four outputs
     concat_out = layers.Concatenate()([x, down_rnn, up_rnn, left_rnn, right_rnn])
-
-    # Convolve the image some more
     output_mask = layers.Conv2D(output_size, (1,1))(concat_out)
     return output_mask
 
@@ -111,7 +115,7 @@ class CGRU(Recurrent):
     """
     Keras will call this function when you first build the layer.
     """
-    def get_initial_states(self, inputs):
+    def get_initial_state(self, inputs):
         # Input shape is BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, CHANNELS
         # Input at each time step is BATCH_SIZE, IMG_WIDTH, CHANNELS
         # Output at each time step is IMG_WIDTH, UNITS 
